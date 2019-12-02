@@ -1,3 +1,6 @@
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
+
 int wheelDirPin1[] = {8, 10};
 int wheelDirPin2[] = {9, 11};
 int pingGndPin = 35;
@@ -6,6 +9,7 @@ int pingTriggerPin = 39;
 int pingVccPin = 41;
 int distanceThreshold = 10;
 int turnDelay = 250;
+int testMode = 0;
 
 int speed0 = 0;
 int speed1 = 130;
@@ -18,6 +22,11 @@ int rightWheel = 1;
 
 int forwardDirection = 1;
 int backwardDirection = 0;
+
+char ssid[] = "xiaomi_mi";
+char pass[] = "049e98dfcc4f";
+int status = WL_IDLE_STATUS;
+int receivedConfig = 0;
 
 void _drive(int whichWheel, int wheelDirection, int wheelSpeed) {
   if (wheelDirection == forwardDirection) {
@@ -54,6 +63,23 @@ long microsecondsToCentimeters(long microseconds) {
   return microseconds / 29 / 2;
 }
 
+void printWifiStatus() {
+  // print the SSID of the network you're attached to
+  Serial.print("SSID: ");
+  Serial.println(WiFi.SSID());
+
+  // print your WiFi shield's IP address
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+
+  // print the received signal strength
+  long rssi = WiFi.RSSI();
+  Serial.print("Signal strength (RSSI):");
+  Serial.print(rssi);
+  Serial.println(" dBm");
+}
+
 int isWithinThreshold() {
   digitalWrite(pingTriggerPin, LOW);
   delayMicroseconds(2);
@@ -65,7 +91,63 @@ int isWithinThreshold() {
   return cm < distanceThreshold;
 }
 
-void setup() {
+void doTests() {
+  // TODO GET REQUEST CHECK 200
+}
+
+void fetchConfig() {
+  while (receivedConfig == 0) {
+    while (client.available()) {
+      char c = client.read();
+      Serial.write(c);
+      receivedConfig = 1;
+    }
+  }
+}
+
+void initWifiModule() {
+  // initialize serial for debugging
+  Serial.begin(115200);
+  // initialize serial for ESP module
+  Serial1.begin(115200);
+  // initialize ESP module
+  WiFi.init(&Serial1);
+
+  // check for the presence of the shield
+  if (WiFi.status() == WL_NO_SHIELD) {
+    Serial.println("WiFi shield not present");
+    // don't continue
+    while (true);
+  }
+
+  // attempt to connect to WiFi network
+  while ( status != WL_CONNECTED) {
+    Serial.print("Attempting to connect to WPA SSID: ");
+    Serial.println(ssid);
+    // Connect to WPA/WPA2 network
+    status = WiFi.begin(ssid, pass);
+  }
+
+  // you're connected now, so print out the data
+  Serial.println("You're connected to the network");
+  
+  printWifiStatus();
+
+  Serial.println();
+  Serial.println("Starting connection to server...");
+  // if you get a connection, report back via serial
+  if (client.connect(server, 80)) {
+    Serial.println("Connected to server");
+    // Make a HTTP request
+    client.println("GET /asciilogo.txt HTTP/1.1");
+    client.println("Host: arduino.cc");
+    client.println("Connection: close");
+    client.println();
+  }
+}
+
+void initLcdScreen() {
+  lcd.begin(16, 2);
   Serial.begin(9600);
   pinMode(pingVccPin, OUTPUT);
   pinMode(pingGndPin, OUTPUT);
@@ -73,9 +155,23 @@ void setup() {
   pinMode(pingEchoPin, INPUT);
   digitalWrite(pingVccPin, HIGH);
   digitalWrite(pingGndPin, LOW);
+  if (testMode) {
+    doTests();
+  } else {
+    lcd.print(" T1 - SE2019NOS");
+  }
+}
+
+void setup() {
+  initWifiModule();
+  fetchConfig();
+  initLcdScreen();
 }
 
 void loop() {
+  if (testMode) {
+    return;
+  }
   while (isWithinThreshold()) {
     turn(speed1);
   }
