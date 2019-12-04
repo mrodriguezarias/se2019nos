@@ -1,4 +1,5 @@
 #include <LiquidCrystal.h>
+#include "WiFiEsp.h"
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 int wheelDirPin1[] = {8, 10};
@@ -16,6 +17,7 @@ int speed1 = 130;
 int speed2 = 160;
 int speed3 = 200;
 int speed4 = 255;
+int currentSpeed = speed4;
 
 int leftWheel = 0;
 int rightWheel = 1;
@@ -23,10 +25,11 @@ int rightWheel = 1;
 int forwardDirection = 1;
 int backwardDirection = 0;
 
-char ssid[] = "xiaomi_mi";
-char pass[] = "049e98dfcc4f";
+char ssid[] = "Tinchox";
+char pass[] = "22334455";
 int status = WL_IDLE_STATUS;
 int receivedConfig = 0;
+WiFiEspClient client;
 
 void _drive(int whichWheel, int wheelDirection, int wheelSpeed) {
   if (wheelDirection == forwardDirection) {
@@ -96,13 +99,26 @@ void doTests() {
 }
 
 void fetchConfig() {
-  while (receivedConfig == 0) {
-    while (client.available()) {
-      char c = client.read();
-      Serial.write(c);
+  int params[] = {0, 
+                2, 0, 0,
+                0, 8, 0, 
+                0, 1, 5 
+        };
+  /*while (receivedConfig == 0) {
+    for (int i = 0; client.available(); i++) {
+      params[i] = client.read() - 48;
       receivedConfig = 1;
     }
-  }
+  }*/
+  testMode = params[0];
+  currentSpeed = params[1] * 100 + params[2] * 10 + params[3];
+  turnDelay =  params[4] * 100 + params[5] * 10 + params[6];
+  distanceThreshold = params[7] * 100 + params[8] * 10 + params[9];
+  
+  Serial.println(testMode);
+  Serial.println(currentSpeed);
+  Serial.println(turnDelay);
+  Serial.println(distanceThreshold);
 }
 
 void initWifiModule() {
@@ -136,7 +152,7 @@ void initWifiModule() {
   Serial.println();
   Serial.println("Starting connection to server...");
   // if you get a connection, report back via serial
-  if (client.connect(server, 80)) {
+  if (client.connect("arduino.cc", 80)) {
     Serial.println("Connected to server");
     // Make a HTTP request
     client.println("GET /asciilogo.txt HTTP/1.1");
@@ -173,7 +189,7 @@ void loop() {
     return;
   }
   while (isWithinThreshold()) {
-    turn(speed1);
+    turn(currentSpeed);
   }
-  drive(speed2);
+  drive(currentSpeed);
 }
