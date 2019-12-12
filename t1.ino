@@ -1,6 +1,8 @@
 #include <LiquidCrystal.h>
+#include <SoftwareSerial.h>
 #include "WiFiEsp.h"
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
+SoftwareSerial BT1(12, 13); // RX | TX
 
 int wheelDirPin1[] = {8, 10};
 int wheelDirPin2[] = {9, 11};
@@ -16,11 +18,15 @@ int testMode = 1;
 int operationMode = normalMode;
 
 int speed0 = 0;
-/*int speed1 = 130;
+int speed1 = 130;
 int speed2 = 160;
 int speed3 = 200;
-int speed4 = 255;*/
+int speed4 = 255;
 int currentSpeed = 255;
+
+int turnRight = 0;
+int turnLeft = 1;
+int turnDirection = turnRight;
 
 int leftWheel = 0;
 int rightWheel = 1;
@@ -57,8 +63,13 @@ void stop() {
 }
 
 void turn(int wheelSpeed) {
-  _drive(leftWheel, backwardDirection, wheelSpeed);
-  _drive(rightWheel, forwardDirection, wheelSpeed);
+  if (turnDirection == turnLeft) {
+    _drive(leftWheel, forwardDirection, wheelSpeed);
+    _drive(rightWheel, backwardDirection, wheelSpeed);
+  } else {
+    _drive(leftWheel, backwardDirection, wheelSpeed);
+    _drive(rightWheel, forwardDirection, wheelSpeed);
+  }
   delay(turnDelay);
 }
 
@@ -101,8 +112,28 @@ void doTests() {
   // TODO GET REQUEST CHECK 200
 }
 
+String getSpeedPercent() {
+  double ratio = currentSpeed / 255;
+  return String(abs(ratio * 100));
+}
+
+void writeToLcd(String str) {
+  lcd.clear();
+  if (operationMode == testMode) {
+    lcd.print(" TEST MODE ON");
+  } else {
+    lcd.print(" T1 - SE2019NOS");
+  }
+  lcd.setCursor(0, 1);
+  lcd.print(str);
+}
+
+void updateLcdScreen() {
+  Serial.println("updateLcdScreen called");
+  writeToLcd("Speed: " + getSpeedPercent() + "%");
+}
+
 void fetchConfig() {
-  int params[] = {0}; //{0, 2, 5, 5, 2, 5, 0, 0, 1, 0};
   String response = "";
   Serial.println("fetchConfig called");
   while (receivedConfig == 0) {
@@ -122,17 +153,19 @@ void fetchConfig() {
   currentSpeed = String(response[1]).toInt() * 100 + String(response[2]).toInt() * 10 + String(response[3]).toInt();
   turnDelay =  String(response[4]).toInt() * 100 + String(response[5]).toInt() * 10 + String(response[6]).toInt();
   distanceThreshold = String(response[7]).toInt() * 100 + String(response[8]).toInt() * 10 + String(response[9]).toInt();
-  
+  turnDirection = String(response[10]).toInt();
   Serial.println(operationMode);
   Serial.println(currentSpeed);
   Serial.println(turnDelay);
   Serial.println(distanceThreshold);
+  Serial.println(turnDirection);
 }
 
 void initWifiModule() {
   // initialize serial for debugging
   Serial.begin(115200);
   // initialize serial for ESP module
+  
   Serial1.begin(115200);
   // initialize ESP module
   WiFi.init(&Serial1);
@@ -170,34 +203,96 @@ void initWifiModule() {
   }
 }
 
-void initLcdScreen() {
-  lcd.begin(16, 2);
-  Serial.begin(9600);
+void initPing() {
   pinMode(pingVccPin, OUTPUT);
   pinMode(pingGndPin, OUTPUT);
   pinMode(pingTriggerPin, OUTPUT);
   pinMode(pingEchoPin, INPUT);
   digitalWrite(pingVccPin, HIGH);
   digitalWrite(pingGndPin, LOW);
-  if (testMode) {
-    doTests();
-  } else {
-    lcd.print(" T1 - SE2019NOS");
+}
+
+void initLcdScreen() {
+  lcd.begin(16, 2);
+  writeToLcd("Initializing...");
+}
+
+void initBluetoothModule() {
+  BT1.begin(9600);
+}
+
+void fetchCommands() {
+  if (BT1.available()) {
+    char cmd = BT1.read();
+    switch (cmd) {
+     case '0':
+        currentSpeed = speed0;
+        updateLcdScreen();
+        break;
+     case '1':
+        currentSpeed = speed1;
+        updateLcdScreen();
+        break;
+     case '2':
+        currentSpeed = speed2;
+        updateLcdScreen();
+        break;
+     case '3':
+        currentSpeed = speed3;
+        updateLcdScreen();
+        break;
+     case '4':
+        currentSpeed = speed4;
+        updateLcdScreen();
+        break;
+    }
   }
 }
 
 void setup() {
-  initWifiModule();
-  fetchConfig();
   initLcdScreen();
+  initWifiModule();
+  initBluetoothModule();
+  fetchConfig();
+  updateLcdScreen();
+  initPing();
 }
 
-void loop() {
-  if (testMode) {
-    return;
-  }
+void doTestMode() {
+  drive(speed1);
+  delay(500);
+  drive(speed2);
+  delay(500);
+  drive(speed3);
+  delay(500);
+  drive(speed4);
+  delay(500);
+  turn(speed2);
+  delay(1000);
+  drive(speed4);
+  delay(500);
+  drive(speed3);
+  delay(500);
+  drive(speed2);
+  delay(500);
+  drive(speed1);
+  delay(500);
+  drive(speed0);
+  delay(500);
+}
+
+void doNormalMode() {
+  fetchCommands();
   while (isWithinThreshold()) {
     turn(currentSpeed);
   }
   drive(currentSpeed);
+}
+
+void loop() {
+  /*if (operationMode == testMode) {
+    doTestMode();
+  } else {
+    doNormalMode();
+  }*/
 }
