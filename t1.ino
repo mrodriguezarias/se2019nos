@@ -34,8 +34,8 @@ int rightWheel = 1;
 int forwardDirection = 1;
 int backwardDirection = 0;
 
-char ssid[] = "Kuroki";
-char pass[] = "nateflau";
+char ssid[] = "Tinchox";
+char pass[] = "22334455";
 int status = WL_IDLE_STATUS;
 int receivedConfig = 0;
 WiFiEspClient client;
@@ -218,12 +218,16 @@ void initLcdScreen() {
 }
 
 void initBluetoothModule() {
+  Serial.println("Initializing Bluetooth module..."); 
   BT1.begin(9600);
 }
 
 void fetchCommands() {
   if (BT1.available()) {
+    Serial.println("reading");
     char cmd = BT1.read();
+    Serial.write(cmd);
+    return;
     switch (cmd) {
      case '0':
         currentSpeed = speed0;
@@ -250,10 +254,11 @@ void fetchCommands() {
 }
 
 void setup() {
+  Serial.begin(9600);
   initLcdScreen();
-  initWifiModule();
+  //initWifiModule();
   initBluetoothModule();
-  fetchConfig();
+  //fetchConfig();
   updateLcdScreen();
   initPing();
 }
@@ -290,6 +295,7 @@ void doNormalMode() {
 }
 
 void loop() {
+  fetchCommands();
   /*if (operationMode == testMode) {
     doTestMode();
   } else {
