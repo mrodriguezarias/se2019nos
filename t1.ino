@@ -20,7 +20,7 @@ int distanceThreshold = 10;
 int turnDelayMax = 1000;
 int turnDelayMin = 100;
 int turnDelayDegree = 50;
-int turnDelay = 250;
+int turnDelay = 600;
 
 int normalMode = 0;
 int testMode = 1;
@@ -34,7 +34,7 @@ int speed4 = 255;
 int speedMax = speed4;
 int speedMin = speed0;
 int speedDegree = 30;
-int currentSpeed = 255;
+int currentSpeed = 128;
 int previousSpeed = 0;
 
 int turnRight = 0;
@@ -154,7 +154,6 @@ void writeToLcd(String str) {
 }
 
 void updateLcdScreen() {
-  Serial.println("updateLcdScreen called");
   writeToLcd("Speed: " + getSpeedPercent() + "%");
 }
 
@@ -162,6 +161,7 @@ void fetchConfig() {
   if (!wifiModuleStarted) {
     return;
   }
+  writeToLcd("Fetching config...");
   String response = "";
   Serial.println("fetchConfig called");
   while (receivedConfig == 0) {
@@ -187,6 +187,8 @@ void fetchConfig() {
   Serial.println(turnDelay);
   Serial.println(distanceThreshold);
   Serial.println(turnDirection);
+  writeToLcd("Config Set Ok");
+  delay(1000);
 }
 
 void initWifiModule() {
@@ -257,8 +259,10 @@ void fetchCommands() {
      case 'a':
         if (thresholdTurnMode == thresholdMode) {
           distanceThreshold = max(distanceThresholdMin, distanceThreshold - distanceThresholdDegree);
+          writeToLcd("Th Distance: " + String(distanceThreshold));
         } else {
           turnDelay = max(turnDelayMin, turnDelay - turnDelayDegree);
+          writeToLcd("Turn Delay: " + String(turnDelay));
         }
         break;
      case 'b':
@@ -268,8 +272,10 @@ void fetchCommands() {
      case 'c':
         if (thresholdTurnMode == thresholdMode) {
           distanceThreshold = min(distanceThresholdMax, distanceThreshold + distanceThresholdDegree);
+          writeToLcd("Th Distance: " + String(distanceThreshold));
         } else {
           turnDelay = min(turnDelayMax, turnDelay + turnDelayDegree);
+          writeToLcd("Turn Delay: " + String(turnDelay));
         }
         break;
      case 'd':
@@ -278,21 +284,33 @@ void fetchCommands() {
         break;
      case 'e':
         operationMode = operationMode == normalMode ? testMode : normalMode;
+        updateLcdScreen();
         break;
      case 'f':
         if (currentSpeed != speed0) {
           previousSpeed = currentSpeed;
           currentSpeed = speed0;
+          writeToLcd("wheels stopped");
         } else {
           currentSpeed = previousSpeed;
+          updateLcdScreen();
         }
-        updateLcdScreen();
         break;
      case 'g':
         turnDirection = turnDirection == turnLeft ? turnRight : turnLeft;
+        if (turnDirection == turnLeft) {
+          writeToLcd("Turn to Left");  
+        } else {
+          writeToLcd("Turn to Right");  
+        }
         break;
      case 'h':
         thresholdTurnMode = thresholdTurnMode == thresholdMode ? turnMode : thresholdMode;
+        if (thresholdTurnMode == thresholdMode) {
+          writeToLcd("Threshold Mode");
+        } else {
+          writeToLcd("Turn Mode");
+        }
         break;
      case 'i':
         if (lcdScreenStatus == lcdScreenOn) {
@@ -316,7 +334,7 @@ void setup() {
   initWifiModule();
   fetchConfig();
   initBluetoothModule();
-  updateLcdScreen();
+updateLcdScreen();
   initPing();
 }
 
