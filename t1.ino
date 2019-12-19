@@ -41,8 +41,8 @@ int turnRight = 0;
 int turnLeft = 1;
 int turnDirection = turnRight;
 
-int leftWheel = 0;
-int rightWheel = 1;
+int leftWheel = 1;
+int rightWheel = 0;
 
 int forwardDirection = 1;
 int backwardDirection = 0;
@@ -83,7 +83,7 @@ void _drive(int whichWheel, int wheelDirection, int wheelSpeed) {
 
 void drive(int wheelSpeed) {
   _drive(rightWheel, forwardDirection, wheelSpeed);
-  _drive(leftWheel, forwardDirection, wheelSpeed);
+  _drive(leftWheel, forwardDirection, max(0, wheelSpeed - 35));
 }
 
 void stop() {
@@ -334,7 +334,7 @@ void setup() {
   initWifiModule();
   fetchConfig();
   initBluetoothModule();
-updateLcdScreen();
+  updateLcdScreen();
   initPing();
 }
 
