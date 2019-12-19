@@ -62,6 +62,13 @@ int lcdScreenOn = 0;
 int lcdScreenOff = 1;
 int lcdScreenStatus = lcdScreenOn;
 
+int testModeRounds = 10;
+int testModeSpeeds[] = {1, 2, 3, 4, 2, 4, 3, 2, 1, 0};
+int tmaDrive = 0;
+int tmaTurn = 1;
+int testModeActions[] = {tmaDrive, tmaDrive, tmaDrive, tmaDrive, tmaTurn, tmaDrive, tmaDrive, tmaDrive, tmaDrive, tmaDrive};
+int testModeDelay = 500;
+
 void _drive(int whichWheel, int wheelDirection, int wheelSpeed) {
   if (wheelDirection == forwardDirection) {
     Serial.println("going forward");
@@ -128,10 +135,6 @@ int isWithinThreshold() {
   long duration = pulseIn(pingEchoPin, HIGH);
   long cm = microsecondsToCentimeters(duration);
   return cm < distanceThreshold;
-}
-
-void doTests() {
-  // TODO GET REQUEST CHECK 200
 }
 
 String getSpeedPercent() {
@@ -283,6 +286,7 @@ void fetchCommands() {
         } else {
           currentSpeed = previousSpeed;
         }
+        updateLcdScreen();
         break;
      case 'g':
         turnDirection = turnDirection == turnLeft ? turnRight : turnLeft;
@@ -317,29 +321,21 @@ void setup() {
 }
 
 void doTestMode() {
-  drive(speed1);
-  delay(500);
-  drive(speed2);
-  delay(500);
-  drive(speed3);
-  delay(500);
-  drive(speed4);
-  delay(500);
-  turn(speed2);
-  delay(1000);
-  drive(speed4);
-  delay(500);
-  drive(speed3);
-  delay(500);
-  drive(speed2);
-  delay(500);
-  drive(speed1);
-  delay(500);
-  drive(speed0);
-  delay(500);
+  for (int i = 0; i < testModeRounds; i++) {
+    fetchCommands();
+    int speed = testModeSpeeds[i];
+    int action = testModeActions[i];
+    if (action == tmaDrive) {
+      drive(speed);
+    } else {
+      turn(speed);
+    }
+    delay(testModeDelay);
+  }
 }
 
 void doNormalMode() {
+  fetchCommands();
   while (isWithinThreshold()) {
     turn(currentSpeed);
   }
@@ -347,7 +343,6 @@ void doNormalMode() {
 }
 
 void loop() {
-  fetchCommands();
   if (operationMode == testMode) {
     doTestMode();
   } else {
