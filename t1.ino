@@ -63,7 +63,7 @@ int lcdScreenOff = 1;
 int lcdScreenStatus = lcdScreenOn;
 
 int testModeRounds = 10;
-int testModeSpeeds[] = {1, 2, 3, 4, 2, 4, 3, 2, 1, 0};
+int testModeSpeeds[] = {speed1, speed2, speed3, speed4, speed2, speed4, speed3, speed2, speed1, speed0};
 int tmaDrive = 0;
 int tmaTurn = 1;
 int testModeActions[] = {tmaDrive, tmaDrive, tmaDrive, tmaDrive, tmaTurn, tmaDrive, tmaDrive, tmaDrive, tmaDrive, tmaDrive};
@@ -83,7 +83,7 @@ void _drive(int whichWheel, int wheelDirection, int wheelSpeed) {
 
 void drive(int wheelSpeed) {
   _drive(rightWheel, forwardDirection, wheelSpeed);
-  _drive(leftWheel, forwardDirection, max(0, wheelSpeed - 35));
+  _drive(leftWheel, forwardDirection, max(0, wheelSpeed - 25));
 }
 
 void stop() {
@@ -339,17 +339,22 @@ void setup() {
 }
 
 void doTestMode() {
+  previousSpeed = currentSpeed;
   for (int i = 0; i < testModeRounds; i++) {
+    Serial.println(i);
     fetchCommands();
-    int speed = testModeSpeeds[i];
+    currentSpeed = testModeSpeeds[i];
+    updateLcdScreen();
     int action = testModeActions[i];
     if (action == tmaDrive) {
-      drive(speed);
+      drive(currentSpeed);
     } else {
-      turn(speed);
+      turn(currentSpeed);
     }
     delay(testModeDelay);
   }
+  currentSpeed = previousSpeed;
+  updateLcdScreen();
 }
 
 void doNormalMode() {
